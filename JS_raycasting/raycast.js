@@ -6,6 +6,10 @@ const WINDOW_HEIGHT = MAP_NUM_ROWS * TILE_SIZE;
 const COLOR_DARK_GRAY = "#222";
 const COLOR_WHITE = "#FFF";
 const COLOR_PLAYER = "#00F";
+const COLOR_RAYS = "#A0F";
+const FOV_ANGLE = (60 * Math.PI) / 180;
+const WALL_STRIP_WIDTH = 30; // width of each ray
+const NUM_RAYS = WINDOW_WIDTH / WALL_STRIP_WIDTH;
 
 class Map {
     constructor() {
@@ -74,8 +78,8 @@ class Player {
         line(
             this.x,
             this.y,
-            this.x + 20 * Math.cos(this.rotationAngle),
-            this.y + 20 * Math.sin(this.rotationAngle)
+            this.x + Math.cos(this.rotationAngle) * 30,
+            this.y + Math.sin(this.rotationAngle) * 30
         );
     }
 
@@ -93,8 +97,25 @@ class Player {
     }
 }
 
+class Ray {
+    constructor(rayAngle) {
+        this.rayAngle = rayAngle;
+    }
+
+    render() {
+        stroke(COLOR_RAYS);
+        line(
+            player.x,
+            player.y,
+            player.x + Math.cos(this.rayAngle) * 30,
+            player.y + Math.sin(this.rayAngle) * 30
+        );
+    }
+}
+
 const grid = new Map();
 const player = new Player();
+let rays = [];
 
 function keyPressed() {
     if (keyCode == UP_ARROW) {
@@ -116,6 +137,27 @@ function keyReleased() {
     }
 }
 
+function castAllRays() {
+    let colId, rayAngle, ray, angleIncrement;
+
+    colId = 0;
+
+    // Start first ray substracting half of the FOV
+    rayAngle = player.rotationAngle - FOV_ANGLE / 2;
+    rays = [];
+
+    // Loop all columns in order to cast the rays
+    angleIncrement = FOV_ANGLE / NUM_RAYS;
+    // for (let i = 0; i < NUM_RAYS; i++) {
+    for (let i = 0; i < 1; i++) {
+        ray = new Ray(rayAngle);
+        //ray.cast();
+        rays.push(ray);
+        rayAngle += angleIncrement;
+        colId++;
+    }
+}
+
 function setup() {
     createCanvas(WINDOW_WIDTH, WINDOW_HEIGHT);
     // Initialize objects
@@ -123,11 +165,15 @@ function setup() {
 
 function update() {
     player.update();
+    castAllRays();
 }
 
 function draw() {
+    // Render all objects frame by frame
     update();
     grid.render();
+    for (ray of rays) {
+        ray.render();
+    }
     player.render();
-    // Render all objects frame by frame
 }
