@@ -74,19 +74,21 @@ class Player {
         noStroke();
         fill(COLOR_PLAYER);
         circle(this.x, this.y, this.radius);
-        stroke(COLOR_PLAYER);
-        line(
-            this.x,
-            this.y,
-            this.x + Math.cos(this.rotationAngle) * 30,
-            this.y + Math.sin(this.rotationAngle) * 30
-        );
+        // stroke(COLOR_PLAYER);
+        // line(
+        //     this.x,
+        //     this.y,
+        //     this.x + Math.cos(this.rotationAngle) * 30,
+        //     this.y + Math.sin(this.rotationAngle) * 30
+        // );
     }
 
     update() {
         let moveStep, newPlayerX, newPlayerY, gridRow, gridCol;
 
-        this.rotationAngle += this.turnDirection * this.rotationSpeed;
+        this.rotationAngle = normalizeAngle(
+            this.rotationAngle + this.turnDirection * this.rotationSpeed
+        );
         moveStep = this.walkDirection * this.moveSpeed;
         newPlayerX = this.x + moveStep * Math.cos(this.rotationAngle);
         newPlayerY = this.y + moveStep * Math.sin(this.rotationAngle);
@@ -99,7 +101,15 @@ class Player {
 
 class Ray {
     constructor(rayAngle) {
-        this.rayAngle = rayAngle;
+        this.rayAngle = normalizeAngle(rayAngle);
+        this.wallHitX = 0;
+        this.wallHitY = 0;
+        this.distance = 0;
+        this.isRayFaceingDown = this.rayAngle >= 0 && this.rayAngle < Math.PI;
+        this.isRayFaceingUp = !this.isRayFaceingDown;
+        this.isRayFaceingRight =
+            this.rayAngle >= 1.5 * Math.PI || this.rayAngle <= 0.5 * Math.PI;
+        this.isRayFaceingLeft = !this.isRayFaceingRight;
     }
 
     render() {
@@ -110,6 +120,71 @@ class Ray {
             player.x + Math.cos(this.rayAngle) * 30,
             player.y + Math.sin(this.rayAngle) * 30
         );
+    }
+
+    cast(columnId) {
+        let xIntersept,
+            yIntersept,
+            xStep,
+            yStep,
+            nextHorzTouchX,
+            nextHorzTouchY;
+        let foundHorzWallHit = false,
+            wallHitX = 0,
+            wallHitY = 0;
+
+        //////////////////////////////////////
+        // HORIZONTAL RAY-GRID INTERSECTION
+        //////////////////////////////////////
+
+        // Find the (x, y) coordinates of the closest horizontal grid interception
+        yIntersept = Math.floor(player.y / TILE_SIZE) * TILE_SIZE;
+        if (this.isRayFaceingDown) {
+            yIntersept += TILE_SIZE;
+        }
+        xIntersept =
+            player.x + (yIntersept - player.y) / Math.tan(this.rayAngle);
+
+        // Calculate the increment for xstep and ystep
+        yStep = TILE_SIZE;
+        if (this.isRayFaceingUp) {
+            yStep *= -1;
+        }
+        xStep = TILE_SIZE / Math.tan(this.rayAngle);
+        if (
+            (this.isRayFaceingLeft && xStep > 0) ||
+            (this.isRayFaceingRight && xStep < 0)
+        ) {
+            xStep *= -1;
+        }
+
+        // Finding the first horizontal intersection
+        nextHorzTouchX = xIntersept;
+        nextHorzTouchY = yIntersept;
+        // Adding/Substracting one pixel in order to be inside of the next tile
+        if (this.isRayFaceingUp) {
+            nextHorzTouchY -= 1;
+        } else if (this.isRayFaceingDown) {
+            nextHorzTouchY += 1;
+        }
+        // Increment xstep and ystep until we find a wall
+        while (
+            nextHorzTouchX >= 0 &&
+            nextHorzTouchX <= WINDOW_WIDTH &&
+            nextHorzTouchY >= 0 &&
+            nextHorzTouchY <= WINDOW_HEIGHT
+        ) {
+            if (grid.hasWallAt(nextHorzTouchX, nextHorzTouchY)) {
+                foundHorzWallHit = true;
+                wallHitX = nextHorzTouchX;
+                wallHitY = nextHorzTouchY;
+                stroke("red");
+                line(player.x, player.y, wallHitX, wallHitY);
+                break;
+            }
+            nextHorzTouchX += xStep;
+            nextHorzTouchY += yStep;
+        }
     }
 }
 
@@ -151,11 +226,19 @@ function castAllRays() {
     // for (let i = 0; i < NUM_RAYS; i++) {
     for (let i = 0; i < 1; i++) {
         ray = new Ray(rayAngle);
-        //ray.cast();
+        ray.cast(colId);
         rays.push(ray);
         rayAngle += angleIncrement;
         colId++;
     }
+}
+
+function normalizeAngle(angle) {
+    angle %= 2 * Math.PI;
+    if (angle < 0) {
+        angle += 2 * Math.PI;
+    }
+    return angle;
 }
 
 function setup() {
@@ -165,7 +248,6 @@ function setup() {
 
 function update() {
     player.update();
-    castAllRays();
 }
 
 function draw() {
@@ -176,4 +258,5 @@ function draw() {
         ray.render();
     }
     player.render();
+    castAllRays();
 }
