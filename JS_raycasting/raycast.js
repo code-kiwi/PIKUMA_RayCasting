@@ -66,8 +66,8 @@ class Player {
         this.turnDirection = 0; // -1 if left, +1 if right
         this.walkDirection = 0; // -1 if back, +1 if front
         this.rotationAngle = Math.PI / 2;
-        this.moveSpeed = 2.0;
-        this.rotationSpeed = (2 * Math.PI) / 180;
+        this.moveSpeed = 3.0;
+        this.rotationSpeed = (3 * Math.PI) / 180;
     }
 
     render() {
