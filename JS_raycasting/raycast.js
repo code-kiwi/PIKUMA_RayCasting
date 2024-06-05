@@ -8,7 +8,7 @@ const COLOR_WHITE = '#FFF';
 const COLOR_PLAYER = '#00F';
 const COLOR_RAYS = '#F00';
 const FOV_ANGLE = (60 * Math.PI) / 180;
-const WALL_STRIP_WIDTH = 10; // width of each ray
+const WALL_STRIP_WIDTH = 5; // width of each ray
 const NUM_RAYS = WINDOW_WIDTH / WALL_STRIP_WIDTH;
 
 class Map {
@@ -74,13 +74,13 @@ class Player {
         noStroke();
         fill(COLOR_PLAYER);
         circle(this.x, this.y, this.radius);
-        // stroke(COLOR_PLAYER);
-        // line(
-        //     this.x,
-        //     this.y,
-        //     this.x + Math.cos(this.rotationAngle) * 30,
-        //     this.y + Math.sin(this.rotationAngle) * 30
-        // );
+        stroke(COLOR_PLAYER);
+        line(
+            this.x,
+            this.y,
+            this.x + Math.cos(this.rotationAngle) * 30,
+            this.y + Math.sin(this.rotationAngle) * 30
+        );
     }
 
     update() {
@@ -153,10 +153,6 @@ class Ray {
         // Finding the first horizontal intersection
         nextHorzTouchX = xIntersept;
         nextHorzTouchY = yIntersept;
-        // Adding/Substracting one pixel in order to be inside of the next tile
-        if (this.isRayFacingUp) {
-            nextHorzTouchY -= 1;
-        }
         // Increment xstep and ystep until we find a wall
         while (
             nextHorzTouchX >= 0 &&
@@ -164,7 +160,12 @@ class Ray {
             nextHorzTouchY >= 0 &&
             nextHorzTouchY <= WINDOW_HEIGHT
         ) {
-            if (grid.hasWallAt(nextHorzTouchX, nextHorzTouchY)) {
+            if (
+                grid.hasWallAt(
+                    nextHorzTouchX,
+                    nextHorzTouchY - (this.isRayFacingUp ? 1 : 0)
+                )
+            ) {
                 foundHorzWallHit = true;
                 horzWallHitX = nextHorzTouchX;
                 horzWallHitY = nextHorzTouchY;
@@ -201,10 +202,6 @@ class Ray {
         // Finding the first vertical intersection
         nextVertTouchX = xIntersept;
         nextVertTouchY = yIntersept;
-        // Adding/Substracting one pixel in order to be inside of the next tile
-        if (this.isRayFacingLeft) {
-            nextVertTouchX -= 1;
-        }
         // Increment xstep and ystep until we find a wall
         while (
             nextVertTouchX >= 0 &&
@@ -212,7 +209,12 @@ class Ray {
             nextVertTouchY >= 0 &&
             nextVertTouchY <= WINDOW_HEIGHT
         ) {
-            if (grid.hasWallAt(nextVertTouchX, nextVertTouchY)) {
+            if (
+                grid.hasWallAt(
+                    nextVertTouchX - (this.isRayFacingLeft ? 1 : 0),
+                    nextVertTouchY
+                )
+            ) {
                 foundVertWallHit = true;
                 vertWallHitX = nextVertTouchX;
                 vertWallHitY = nextVertTouchY;
