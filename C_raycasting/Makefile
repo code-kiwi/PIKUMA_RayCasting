@@ -9,7 +9,7 @@ ifndef NOFLAGS
 	CFLAGS		=	-Wall -Werror -Wextra -std=c99
 endif
 HFLAGS			=	-I$(HEADERS_DIR)
-EXT_LIB_FLAGS	=	-lSDL2
+EXT_LIB_FLAGS	=	-lSDL2 -lm
 
 # HEADERS
 HEADERS_DIR		=	includes/
@@ -48,6 +48,8 @@ $(OBJS_MAIN_DIR)%.o: $(SRCS_MAIN_DIR)%.c
 
 run: $(NAME)
 	$(NAME)
+
+-include $(DEPS)
 
 clean:
 	rm -rf $(OBJS_MAIN_DIR)
