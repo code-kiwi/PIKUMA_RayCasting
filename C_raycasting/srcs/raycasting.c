@@ -11,6 +11,8 @@ bool			is_game_running = false;
 
 int				playerX, playerY;
 
+int				ticks_last_frame = 0;
+
 void	setup(void)
 {
 	playerX = 0;
@@ -19,8 +21,23 @@ void	setup(void)
 
 void	update(void)
 {
-	playerX += 1;
-	playerY += 1;
+	float	delta_time;
+	int		time_to_wait;
+
+	// Compute how long we have to wait until the reach of target frame time and wait if we are running to fast
+	time_to_wait = ticks_last_frame + FRAME_TIME_LEN - SDL_GetTicks();
+	if (time_to_wait > 0 && time_to_wait <= FRAME_TIME_LEN)
+		SDL_Delay(time_to_wait);
+
+	// Compute the delat time to be used as an update factor when changing game objects
+	delta_time = (SDL_GetTicks() - ticks_last_frame) / 1000.0f;
+
+	// Store the milliseconds of the current frame to be used in the future
+	ticks_last_frame = SDL_GetTicks();
+
+	// Update our objects
+	playerX += 32 * delta_time;
+	playerY += 32 * delta_time;
 }
 
 bool	initialize_window(void)
