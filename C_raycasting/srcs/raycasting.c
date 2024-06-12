@@ -74,8 +74,8 @@ void	setup(void)
 	player.turn_direction = 0;
 	player.walk_direction = 0;
 	player.rotation_angle = PI / 2;
-	player.walk_speed = 100; // pixels per second
-	player.turn_speed = 45 * (PI / 180); // radians per second
+	player.walk_speed = 200; // pixels per second
+	player.turn_speed = 90 * (PI / 180); // radians per second
 }
 
 void	update(void)
@@ -98,7 +98,7 @@ void	update(void)
 	move_player(delta_time);
 }
 
-void process_input()
+void	process_input()
 {
 	SDL_Event	event;
 
@@ -129,7 +129,18 @@ void process_input()
 	}
 }
 
-void move_player(float delta_time)
+bool	map_has_wall_at(float x, float y)
+{
+	int	row, col;
+
+	if (x < 0 || x > WINDOW_WIDTH || y < 0 || y > WINDOW_HEIGHT)
+		return (true);
+	row = floor(y / TILE_SIZE);
+	col = floor(x / TILE_SIZE);
+	return (map[row][col] != 0);
+}
+
+void	move_player(float delta_time)
 {
 	float	move_step;
 	float	new_x, new_y;
@@ -142,11 +153,14 @@ void move_player(float delta_time)
 	new_x = player.x + cos(player.rotation_angle) * move_step;
 	new_y = player.y + sin(player.rotation_angle) * move_step;
 
-	player.x = new_x;
-	player.y = new_y;
+	if (!map_has_wall_at(new_x, new_y))
+	{
+		player.x = new_x;
+		player.y = new_y;
+	}
 }
 
-void render_map()
+void	render_map()
 {
 	int			i, j;
 	int			tile_x, tile_y;
@@ -159,7 +173,7 @@ void render_map()
 		{
 			tile_x = j * TILE_SIZE;
 			tile_y = i * TILE_SIZE;
-			tile_color = map[i][j] != 0 ? 255 : 0;
+			tile_color = map[i][j] != 0 ? 0 : 255;
 
 			SDL_SetRenderDrawColor(renderer, tile_color, tile_color, tile_color, 255);
 			tile_rect.h = TILE_SIZE * MINIMAP_SCALE_FACTOR;
@@ -191,7 +205,7 @@ void	render_player()
 	);
 }
 
-void render(void)
+void	render(void)
 {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
