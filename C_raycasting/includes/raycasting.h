@@ -22,6 +22,7 @@
 # define FRAME_TIME_LEN         (1000 / FPS) // time in ms for each frame
 
 typedef struct s_player t_player;
+typedef struct s_ray    t_ray;
 
 struct s_player
 {
@@ -34,6 +35,20 @@ struct s_player
     float   rotation_angle;
     float   walk_speed;
     float   turn_speed;
+};
+
+struct s_ray
+{
+    float   ray_angle;
+    float   wall_hit_x;
+    float   wall_hit_y;
+    float   distance;
+    bool    was_hit_vertical;
+    bool     is_ray_up;
+    bool     is_ray_down;
+    bool     is_ray_left;
+    bool     is_ray_right;
+    int     wall_hit_content;
 };
 
 void move_player(float delta_time);

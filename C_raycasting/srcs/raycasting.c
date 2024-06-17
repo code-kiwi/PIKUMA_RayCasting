@@ -27,6 +27,7 @@ SDL_Renderer	*renderer = NULL;
 bool			is_game_running = false;
 int				ticks_last_frame = 0;
 t_player		player;
+t_ray			rays[NUM_RAYS];
 
 bool	initialize_window(void)
 {
@@ -65,39 +66,6 @@ void	destroy_window()
 	SDL_Quit();
 }
 
-void	setup(void)
-{
-	player.x = WINDOW_WIDTH / 2;
-	player.y = WINDOW_HEIGHT / 2;
-	player.width = 5;
-	player.height = 5;
-	player.turn_direction = 0;
-	player.walk_direction = 0;
-	player.rotation_angle = PI / 2;
-	player.walk_speed = 200; // pixels per second
-	player.turn_speed = 90 * (PI / 180); // radians per second
-}
-
-void	update(void)
-{
-	float	delta_time;
-	int		time_to_wait;
-
-	// Compute how long we have to wait until the reach of target frame time and wait if we are running to fast
-	time_to_wait = ticks_last_frame + FRAME_TIME_LEN - SDL_GetTicks();
-	if (time_to_wait > 0 && time_to_wait <= FRAME_TIME_LEN)
-		SDL_Delay(time_to_wait);
-
-	// Compute the delat time to be used as an update factor when changing game objects
-	delta_time = (SDL_GetTicks() - ticks_last_frame) / 1000.0f;
-
-	// Store the milliseconds of the current frame to be used in the future
-	ticks_last_frame = SDL_GetTicks();
-
-	// Update our objects as a function of delta time
-	move_player(delta_time);
-}
-
 void	process_input()
 {
 	SDL_Event	event;
@@ -129,6 +97,15 @@ void	process_input()
 	}
 }
 
+float normalize_angle(float angle)
+{
+    angle = remainderf(angle, TWO_PI);
+    if (angle < 0) {
+        angle += 2 * TWO_PI;
+    }
+    return (angle);
+}
+
 bool	map_has_wall_at(float x, float y)
 {
 	int	row, col;
@@ -157,6 +134,80 @@ void	move_player(float delta_time)
 	{
 		player.x = new_x;
 		player.y = new_y;
+	}
+}
+
+void	cast_ray(float ray_angle, int strip_id)
+{
+	t_ray	*ray;
+	float	x_intercept, y_intercept;
+	float	x_step, y_step;
+	float	next_horz_touch_x, next_horz_touch_y;
+	float	horz_wall_hit_x, horz_wall_hit_y;
+	float	x_to_check, y_to_check;
+	int		horz_wall_content;
+	bool	found_horz_wall_hit;
+
+	ray = &rays[strip_id];
+	ray->ray_angle = normalize_angle(ray_angle);
+	found_horz_wall_hit = false;
+
+	// Finding the ray orientation
+	ray->is_ray_down = ray->ray_angle > 0 && ray->ray_angle < PI;
+	ray->is_ray_up = !ray->is_ray_down;
+	ray->is_ray_right = ray->ray_angle < 0.5 * PI || ray->ray_angle > 1.5 * PI;
+	ray->is_ray_left = !ray->is_ray_right;
+
+	// HORIZONTAL RAY-GRID INTERSECTION
+	// Find the (x, y) coordinates of the closest horizontal grid interception
+	y_intercept = floorf(player.y / TILE_SIZE) * TILE_SIZE;
+	if (ray->is_ray_down) {
+		y_intercept += TILE_SIZE;
+	}
+	x_intercept = player.x + (y_intercept - player.y) / tan(ray_angle);
+
+	// Calculate the increment for x_step and y_step
+	y_step = TILE_SIZE;
+	if (ray->is_ray_up) {
+		y_step *= -1;
+	}
+	x_step = TILE_SIZE / tan(ray->ray_angle);
+	x_step *= ray->is_ray_left && x_step > 0 ? -1 : 1;
+	x_step *= ray->is_ray_left && x_step < 0 ? -1 : 1;
+
+	// Finding the first horizontal intersection
+	next_horz_touch_x = x_intercept;
+	next_horz_touch_y = y_intercept;
+	while (
+		next_horz_touch_x >= 0 && next_horz_touch_x <= WINDOW_WIDTH &&
+		next_horz_touch_y >= 0 && next_horz_touch_y <= WINDOW_HEIGHT
+	) {
+		x_to_check = next_horz_touch_x;
+		y_to_check = next_horz_touch_y - (ray->is_ray_up ? 1 : 0);
+		if (map_has_wall_at(x_to_check, y_to_check)) {
+			found_horz_wall_hit = true;
+			horz_wall_hit_x = next_horz_touch_x;
+			horz_wall_hit_y = next_horz_touch_y;
+			horz_wall_content = map[(int)floorf(y_to_check / TILE_SIZE)][(int)floorf(x_to_check / TILE_SIZE)];
+			break ;
+		}
+		next_horz_touch_x += x_step;
+		next_horz_touch_y += y_step;
+	}
+}
+
+void	cast_all_rays()
+{
+	float	ray_angle;
+	int		strip_id;
+	float	angle_delta;
+
+	ray_angle = player.rotation_angle - (FOV_ANGLE / 2);
+	angle_delta = FOV_ANGLE / NUM_RAYS;
+	for (strip_id = 0; strip_id < NUM_RAYS; strip_id++)
+	{
+		cast_ray(ray_angle, strip_id);
+		ray_angle += angle_delta;
 	}
 }
 
@@ -215,6 +266,41 @@ void	render(void)
 	render_player();
 
 	SDL_RenderPresent(renderer);
+}
+
+void	setup(void)
+{
+	player.x = WINDOW_WIDTH / 2;
+	player.y = WINDOW_HEIGHT / 2;
+	player.width = 5;
+	player.height = 5;
+	player.turn_direction = 0;
+	player.walk_direction = 0;
+	player.rotation_angle = PI / 2;
+	player.walk_speed = 200; // pixels per second
+	player.turn_speed = 90 * (PI / 180); // radians per second
+}
+
+void	update(void)
+{
+	float	delta_time;
+	int		time_to_wait;
+
+	// Compute how long we have to wait until the reach of target frame time and wait if we are running to fast
+	time_to_wait = ticks_last_frame + FRAME_TIME_LEN - SDL_GetTicks();
+	if (time_to_wait > 0 && time_to_wait <= FRAME_TIME_LEN)
+		SDL_Delay(time_to_wait);
+
+	// Compute the delat time to be used as an update factor when changing game objects
+	delta_time = (SDL_GetTicks() - ticks_last_frame) / 1000.0f;
+
+	// Store the milliseconds of the current frame to be used in the future
+	ticks_last_frame = SDL_GetTicks();
+
+	// Update our objects as a function of delta time
+	move_player(delta_time);
+
+	cast_all_rays();
 }
 
 int	main(void)
